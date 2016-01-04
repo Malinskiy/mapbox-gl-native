@@ -14,7 +14,7 @@ function terminate() {
     console.warn('Server terminated due to inactivity');
     process.exit(0);
 };
-var inactivity = 5000; // milliseconds
+var inactivity = 10000; // milliseconds
 var timeout = setTimeout(terminate, inactivity);
 app.use(function(req, res, next) {
     clearTimeout(timeout);
@@ -38,6 +38,9 @@ app.get('/test', function (req, res) {
     res.send('Hello World!');
 });
 
+app.get('/stale/*', function() {
+    // Never respond.
+});
 
 var cacheCounter = 0;
 app.get('/cache', function(req, res) {
