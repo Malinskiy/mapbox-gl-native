@@ -287,12 +287,6 @@ std::chrono::steady_clock::duration MGLDurationInSeconds(float duration)
     // setup mbgl map
     _mbglMap = new mbgl::Map(*_mbglView, *_mbglFileSource, mbgl::MapMode::Continuous);
 
-    // setup refresh driver
-    _displayLink = [CADisplayLink displayLinkWithTarget:self selector:@selector(updateFromDisplayLink)];
-    _displayLink.frameInterval = MGLTargetFrameInterval;
-    [_displayLink addToRunLoop:[NSRunLoop currentRunLoop] forMode:NSRunLoopCommonModes];
-    _needsDisplayRefresh = YES;
-
     // start paused if in IB
     if (_isTargetingInterfaceBuilder || background) {
         self.dormant = YES;
@@ -489,6 +483,8 @@ std::chrono::steady_clock::duration MGLDurationInSeconds(float duration)
 {
     [[NSNotificationCenter defaultCenter] removeObserver:self];
     [[MGLAccountManager sharedManager] removeObserver:self forKeyPath:@"accessToken"];
+    
+    [self invalidateDisplayLink];
 
     if (_mbglMap)
     {
@@ -785,7 +781,7 @@ std::chrono::steady_clock::duration MGLDurationInSeconds(float duration)
     }
 }
 
-- (void)invalidate
+- (void)setNeedsGLDisplay
 {
     MGLAssertIsMainThread();
 
@@ -798,9 +794,40 @@ std::chrono::steady_clock::duration MGLDurationInSeconds(float duration)
 
     if ( ! self.isDormant)
     {
+        [self invalidateDisplayLink];
         self.dormant = YES;
         _mbglMap->pause();
         [self.glView deleteDrawable];
+    }
+}
+
+- (void)validateDisplayLink
+{
+    _displayLink = [CADisplayLink displayLinkWithTarget:self selector:@selector(updateFromDisplayLink)];
+    _displayLink.frameInterval = MGLTargetFrameInterval;
+    [_displayLink addToRunLoop:[NSRunLoop currentRunLoop] forMode:NSRunLoopCommonModes];
+    _needsDisplayRefresh = YES;
+}
+
+- (void)invalidateDisplayLink
+{
+    [_displayLink invalidate];
+    _displayLink = nil;
+}
+
+- (void)willMoveToSuperview:(UIView *)newSuperview
+{
+    if ( ! newSuperview)
+    {
+        [self invalidateDisplayLink];
+    }
+}
+
+- (void)didMoveToSuperview
+{
+    if (self.superview)
+    {
+        [self validateDisplayLink];
     }
 }
 
@@ -813,6 +840,8 @@ std::chrono::steady_clock::duration MGLDurationInSeconds(float duration)
         self.dormant = YES;
 
         [MGLMapboxEvents flush];
+        
+        _displayLink.paused = YES;
 
         if ( ! self.glSnapshotView)
         {
@@ -857,6 +886,8 @@ std::chrono::steady_clock::duration MGLDurationInSeconds(float duration)
         [self.glView bindDrawable];
 
         _mbglMap->resume();
+        
+        _displayLink.paused = NO;
     }
 }
 
@@ -3423,7 +3454,7 @@ class MBGLView : public mbgl::View
 
     void invalidate() override
     {
-        [nativeView performSelectorOnMainThread:@selector(invalidate)
+        [nativeView performSelectorOnMainThread:@selector(setNeedsGLDisplay)
                                      withObject:nil
                                   waitUntilDone:NO];
     }
