@@ -1,8 +1,10 @@
-#Exerciser Tests
-##Running an UI/Application Exerciser Locally
+#UI/Application Exerciser Tests
 
-The Android SDK provides a test tool called
-[Monkey](http://developer.android.com/tools/help/monkey.html),
+UI/application exerciser tests are stress test using random generated users events.
+
+##Running Locally
+
+The Android SDK provides a test tool called [Monkey](http://developer.android.com/tools/help/monkey.html),
 "a program that runs on your emulator or device and generates pseudo-random streams of user events
 such as clicks, touches, or gestures, as well as a number of system-level events."
 
@@ -13,7 +15,7 @@ and then:
 $ adb shell monkey -p com.mapbox.mapboxgl.testapp -v 500
 ```
 
-##Running an UI/Application Exerciser on AWS Device Farm
+##Running on AWS Device Farm
 
 Amazon Device farm supports a similar tool called `Built-in Fuzz Test`.
 "The built-in fuzz test randomly sends user interface events to devices and then reports results."
