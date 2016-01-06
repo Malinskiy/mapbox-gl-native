@@ -118,6 +118,7 @@ public:
                           GLKViewDelegate,
                           CLLocationManagerDelegate,
                           UIActionSheetDelegate,
+                          UIAlertViewDelegate,
                           SMCalloutViewDelegate,
                           MGLMultiPointDelegate,
                           MGLAnnotationImageDelegate>
@@ -1390,13 +1391,9 @@ std::chrono::steady_clock::duration MGLDurationInSeconds(float duration)
                                  @"© Mapbox",
                                  @"© OpenStreetMap",
                                  @"Improve This Map",
+                                 @"Telemetry Settings",
                                  nil];
 
-        // iOS 8+: add action that opens app's Settings.app panel, if applicable
-        if (&UIApplicationOpenSettingsURLString != NULL && ! [MGLAccountManager mapboxMetricsEnabledSettingShownInApp])
-        {
-            [self.attributionSheet addButtonWithTitle:@"Adjust Privacy Settings"];
-        }
     }
     
     [self.attributionSheet showFromRect:self.attributionButton.frame inView:self animated:YES];
@@ -1421,10 +1418,47 @@ std::chrono::steady_clock::duration MGLDurationInSeconds(float duration)
         [[UIApplication sharedApplication] openURL:
          [NSURL URLWithString:feedbackURL]];
     }
-    // skips to 4 because button is conditionally added after cancel (index 3)
-    else if (buttonIndex == actionSheet.firstOtherButtonIndex + 4)
+    else if (buttonIndex == actionSheet.firstOtherButtonIndex + 3)
     {
-        [[UIApplication sharedApplication] openURL:[NSURL URLWithString:UIApplicationOpenSettingsURLString]];
+        NSString *message;
+        NSString *participate;
+        NSString *optOut;
+
+        if ([[NSUserDefaults standardUserDefaults] boolForKey:@"MGLMapboxMetricsEnabled"])
+        {
+            message = @"You are helping to make OpenStreetMap and Mapbox maps better by contributing anonymous usage data.";
+            participate = @"Keep Participating";
+            optOut = @"Stop Participating";
+        }
+        else
+        {
+            message = @"You can help make OpenStreetMap and Mapbox maps better by contributing anonymous usage data.";
+            participate = @"Participate";
+            optOut = @"Don’t Participate";
+        }
+
+        UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"Make Mapbox Maps Better"
+                                                        message:message
+                                                       delegate:self
+                                              cancelButtonTitle:participate
+                                              otherButtonTitles:@"Tell Me More", optOut, nil];
+        [alert show];
+    }
+}
+
+- (void)alertView:(UIAlertView *)alertView didDismissWithButtonIndex:(NSInteger)buttonIndex
+{
+    if (buttonIndex == alertView.cancelButtonIndex)
+    {
+        [[NSUserDefaults standardUserDefaults] setBool:YES forKey:@"MGLMapboxMetricsEnabled"];
+    }
+    else if (buttonIndex == alertView.firstOtherButtonIndex)
+    {
+        [[UIApplication sharedApplication] openURL:[NSURL URLWithString:@"https://mapbox.com/telemetry/"]];
+    }
+    else if (buttonIndex == alertView.firstOtherButtonIndex + 1)
+    {
+        [[NSUserDefaults standardUserDefaults] setBool:NO forKey:@"MGLMapboxMetricsEnabled"];
     }
 }
 
